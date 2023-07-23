@@ -1,118 +1,200 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-
-const inter = Inter({ subsets: ['latin'] })
-
+import { useState, useEffect } from "react";
 export default function Home() {
-  return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    const [canMove, setCanMove] = useState(false);
+    const [score, setScore] = useState(0);
+    const [time, setTime] = useState(0);
+
+    const dimension = 4;
+
+    const createGrill = () => {
+        let grill = [];
+        for (let i = 0; i < dimension; i++) {
+            let row = new Array(dimension).fill(null);
+            grill.push(row);
+        }
+        return grill;
+    };
+
+    function startGame() {
+        const newGrill = createGrill();
+        placeRandomNumber(newGrill);
+        placeRandomNumber(newGrill);
+        setGrill(newGrill);
+        setCanMove(true);
+    }
+
+    function getTwoOrFour() {
+        const randomNumber = Math.random();
+        return randomNumber > 0.7 ? 4 : 2;
+    };
+
+    const [grill, setGrill] = useState(createGrill());
+
+    const handleKeyPress = (e) => {
+        if (![37, 38, 39, 40].includes(e.keyCode) || !canMove) return;
+        e.preventDefault();
+
+        const newGrill = JSON.parse(JSON.stringify(grill));
+
+        if (e.keyCode === 38) moveLeft(newGrill);
+        else if (e.keyCode === 37) moveUp(newGrill);
+        else if (e.keyCode === 40) moveRight(newGrill);
+        else if (e.keyCode === 39) moveDown(newGrill);
+
+        placeRandomNumber(newGrill);
+        setGrill(newGrill);
+
+        if (checkWinCondition()) {
+            setCanMove(false);
+        }
+    };
+
+    const moveLeft = (newGrill) => {
+        for (let row = 0; row < dimension; row++) {
+            let newRow = newGrill[row].filter((val) => val !== null);
+            newRow = combineNumbers(newRow);
+            while (newRow.length < dimension) newRow.push(null);
+            newGrill[row] = newRow;
+        }
+    };
+
+    const moveRight = (newGrill) => {
+        for (let row = 0; row < dimension; row++) {
+            let newRow = newGrill[row].filter((val) => val !== null);
+            newRow = combineNumbers(newRow.reverse()).reverse();
+            while (newRow.length < dimension) newRow.unshift(null);
+            newGrill[row] = newRow;
+        }
+    };
+
+    const moveUp = (newGrill) => {
+        for (let col = 0; col < dimension; col++) {
+            let newCol = newGrill.map((row) => row[col]).filter((val) => val !== null);
+            newCol = combineNumbers(newCol);
+            while (newCol.length < dimension) newCol.push(null);
+            for (let row = 0; row < dimension; row++) {
+                newGrill[row][col] = newCol[row];
+            }
+        }
+    };
+
+    const moveDown = (newGrill) => {
+        for (let col = 0; col < dimension; col++) {
+            let newCol = newGrill.map((row) => row[col]).filter((val) => val !== null);
+            newCol = combineNumbers(newCol.reverse()).reverse();
+            while (newCol.length < dimension) newCol.unshift(null);
+            for (let row = 0; row < dimension; row++) {
+                newGrill[row][col] = newCol[row];
+            }
+        }
+    };
+
+    const combineNumbers = (arr) => {
+        let combined = false;
+        const combinedArr = arr.map((val) => val);
+        let combineScore = 0;
+
+        for (let i = 0; i < combinedArr.length - 1; i++) {
+            if (combinedArr[i] === combinedArr[i + 1] && combinedArr[i] !== null) {
+                combinedArr[i] *= 2;
+                combinedArr[i + 1] = null;
+                combined = true;
+                combineScore += combinedArr[i];
+            }
+        }
+
+        if (combined) {
+            setScore((prevScore) => prevScore + combineScore);
+        }
+
+        return combinedArr.filter((val) => val !== null);
+    };
+
+    const checkWinCondition = () => {
+        for (let row = 0; row < dimension; row++) {
+            for (let col = 0; col < dimension; col++) {
+                if (grill[row][col] === 2048) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const placeRandomNumber = (newGrill) => {
+        const availablePositions = [];
+        for (let row = 0; row < dimension; row++) {
+            for (let col = 0; col < dimension; col++) {
+                if (newGrill[row][col] === null) {
+                    availablePositions.push({ row, col });
+                }
+            }
+        }
+
+        if (availablePositions.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availablePositions.length);
+            const { row, col } = availablePositions[randomIndex];
+            newGrill[row][col] = getTwoOrFour();
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener('keydown', handleKeyPress);
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [grill]);
+
+    useEffect(() => {
+        let interval;
+
+        if (canMove) {
+            interval = setInterval(() => {
+                setTime((prevTime) => prevTime + 1);
+            }, 1000);
+        }
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [canMove]);
+
+    const formatTime = (time) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = time % 60;
+        const formattedMinutes = minutes.toString().padStart(2, "0");
+        const formattedSeconds = seconds.toString().padStart(2, "0");
+        return `${formattedMinutes}:${formattedSeconds}`;
+    };
+
+    return (
+        <div className='h-screen flex flex-col justify-center items-center'>
+            <div className="flex justify-center items-center gap-16">
+                <p>Time: {formatTime(time)}</p>
+                <p>Score: {score}</p>
+            </div>
+            <div className='grid grid-cols-4 gap-2 my-4 px-4'>
+                {grill.map((row, rowIndex) => (
+                    <div key={rowIndex} className='grid grid-cols-1 gap-2'>
+                        {row.map((value, colIndex) => (
+                            <div
+                                key={colIndex}
+                                className='bg-gray-300 p-4 flex items-center justify-center font-bold text-3xl h-[50px] w-[50px] sm:h-[80px] sm:w-[80px] md:h-[120px] md:w-[120px]'
+                            >
+                                {value || ""}
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+            <div className='flex justify-center items-center'>
+                <button
+                    onClick={startGame}
+                    className='px-4 py-2 bg-blue-500 text-white rounded'
+                >
+                    {!canMove ? "Start Game" : "New Game"}
+                </button>
+            </div>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+    );
 }
