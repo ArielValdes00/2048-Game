@@ -3,6 +3,8 @@ export default function Home() {
     const [canMove, setCanMove] = useState(false);
     const [score, setScore] = useState(0);
     const [time, setTime] = useState(0);
+    const [modalGameOver, setModalGameOver] = useState(false);
+    const [isGameInProgress, setIsGameInProgress] = useState(false);
 
     const dimension = 4;
 
@@ -21,6 +23,9 @@ export default function Home() {
         placeRandomNumber(newGrill);
         setGrill(newGrill);
         setCanMove(true);
+        setModalGameOver(false);
+        setTime(0);
+        setIsGameInProgress(true);
     }
 
     function getTwoOrFour() {
@@ -41,8 +46,13 @@ export default function Home() {
         else if (e.keyCode === 40) moveRight(newGrill);
         else if (e.keyCode === 39) moveDown(newGrill);
 
-        placeRandomNumber(newGrill);
-        setGrill(newGrill);
+        if (checkLose()) {
+            setIsGameInProgress(false);
+            setModalGameOver(true);
+        } else {
+            placeRandomNumber(newGrill);
+            setGrill(newGrill);
+        }
 
         if (checkWinCondition()) {
             setCanMove(false);
@@ -138,6 +148,27 @@ export default function Home() {
         }
     };
 
+    function checkLose() {
+        for (let row = 0; row < dimension; row++) {
+            for (let col = 0; col < dimension; col++) {
+                if (grill[row][col] === null) {
+                    return false;
+                }
+                if (row + 1 < dimension && grill[row][col] === grill[row + 1][col]) {
+                    return false;
+                }
+                if (col + 1 < dimension && grill[row][col] === grill[row][col + 1]) {
+                    return false;
+                }
+            }
+        }
+        if (modalGameOver) {
+            setIsGameInProgress(false);
+            return true;
+        }
+        return true;
+    }
+
     useEffect(() => {
         document.addEventListener('keydown', handleKeyPress);
         return () => {
@@ -148,7 +179,7 @@ export default function Home() {
     useEffect(() => {
         let interval;
 
-        if (canMove) {
+        if (canMove && isGameInProgress) {
             interval = setInterval(() => {
                 setTime((prevTime) => prevTime + 1);
             }, 1000);
@@ -157,7 +188,7 @@ export default function Home() {
         return () => {
             clearInterval(interval);
         };
-    }, [canMove]);
+    }, [canMove, isGameInProgress]);
 
     const formatTime = (time) => {
         const minutes = Math.floor(time / 60);
@@ -167,13 +198,32 @@ export default function Home() {
         return `${formattedMinutes}:${formattedSeconds}`;
     };
 
+    const handleCloseModal = () => {
+        setModalGameOver(false);
+    };
+
+    useEffect(() => {
+        console.log(modalGameOver);
+    }, [modalGameOver]);
+
     return (
-        <div className='h-screen flex flex-col justify-center items-center'>
+        <div className='h-screen flex flex-col justify-center items-center relative'>
             <div className="flex justify-center items-center gap-16">
                 <p>Time: {formatTime(time)}</p>
                 <p>Score: {score}</p>
             </div>
             <div className='grid grid-cols-4 gap-2 my-4 px-4'>
+                {modalGameOver && (
+                    <div className="fixed inset-0 flex items-center justify-center ">
+                        <div className="flex flex-col items-center justify-center z-50 gap-5 rounded-lg shadow-lg bg-white p-8 w-[450px] h-[250px]">
+                            <p className="text-red-500 font-bold text-4xl mt-4 bg-white">Game Over</p>
+                            <button onClick={startGame} className='px-4 py-2 bg-blue-500 text-white rounded'>Try Again</button>
+                        </div>
+                        <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={handleCloseModal}>
+                            <div className="absolute inset-0 bg-neutral-800 opacity-75"></div>
+                        </div>
+                    </div>
+                )}
                 {grill.map((row, rowIndex) => (
                     <div key={rowIndex} className='grid grid-cols-1 gap-2'>
                         {row.map((value, colIndex) => (
